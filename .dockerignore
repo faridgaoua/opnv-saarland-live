@@ -1,0 +1,9 @@
+.git/
+.venv/
+backend/.venv/
+backend/data/
+backend/*.log
+backend/*.err.log
+__pycache__/
+*.pyc
+probe_radar.py

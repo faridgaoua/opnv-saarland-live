@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Saarland Live — Züge in Echtzeit</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <div id="map"></div>
+
+  <header id="hud">
+    <h1>Saarland Live</h1>
+    <div id="status">
+      <span id="status-dot" class="dot"></span>
+      <span id="status-text">verbinde…</span>
+    </div>
+    <div id="counts">
+      <strong id="vehicle-count">0</strong> Fahrzeuge ·
+      <span id="delay-summary">–</span> ·
+      Update <span id="updated-at">–</span>
+    </div>
+    <div id="modes" class="chips">
+      <button class="chip active" data-mode="">Alle</button>
+      <button class="chip" data-mode="bahn">Bahn</button>
+      <button class="chip" data-mode="sbahn">S-Bahn</button>
+      <button class="chip" data-mode="bus">Bus</button>
+    </div>
+    <label id="filters">
+      <span>Linien:</span>
+      <select id="line-filter"><option value="">alle</option></select>
+    </label>
+    <button id="locate-btn">Mein Standort</button>
+    <div id="errors"></div>
+  </header>
+
+  <div id="legend">
+    <div><span class="swatch" style="background:#e5484d"></span> verspätet</div>
+    <div><span class="swatch" style="background:#2f9e44"></span> pünktlich</div>
+    <div><span class="swatch" style="background:#868e96"></span> keine Daten</div>
+  </div>
+
+  <div id="attribution">
+    Echtzeit: <a href="https://gtfs.de" target="_blank" rel="noopener">saarfahrplan/HAFAS</a>
+    · Fahrplan: <a href="https://gtfs.de" target="_blank" rel="noopener">gtfs.de</a> CC BY 4.0
+    · SIRI Saarland / GTFS-RT CC BY-SA 4.0
+    · Karte © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="/static/app.js"></script>
+</body>
+</html>
