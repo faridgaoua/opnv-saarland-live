@@ -17,6 +17,7 @@ let stopsLayer = L.layerGroup().addTo(map);
 let currentLineFilter = "";
 let currentMode = "";
 let lastSnapshot = null;
+let lastSnapAt = 0; // performance.now() of previous snapshot
 
 function modeMatches(v) {
   if (!currentMode) return true;
@@ -96,8 +97,39 @@ function vehiclePopup(v) {
   return parts.join("<br>");
 }
 
-function renderVehicles(vehicles) {
+function currentPos(entry, now) {
+  if (entry.dur === 0 || entry.done) return entry.to;
+  let p = (now - entry.t0) / entry.dur;
+  if (p >= 1) return entry.to;
+  if (p <= 0) return entry.from;
+  return [
+    entry.from[0] + (entry.to[0] - entry.from[0]) * p,
+    entry.from[1] + (entry.to[1] - entry.from[1]) * p,
+  ];
+}
+
+function animateLoop() {
+  const now = performance.now();
+  for (const entry of markers.values()) {
+    if (entry.dur === 0) continue;
+    let p = (now - entry.t0) / entry.dur;
+    if (p >= 1) p = 1;
+    if (p <= 0) p = 0;
+    if (p === entry.lastP) continue;
+    entry.lastP = p;
+    entry.done = p === 1;
+    entry.marker.setLatLng([
+      entry.from[0] + (entry.to[0] - entry.from[0]) * p,
+      entry.from[1] + (entry.to[1] - entry.from[1]) * p,
+    ]);
+  }
+  requestAnimationFrame(animateLoop);
+}
+
+function renderVehicles(vehicles, dur) {
   const seen = new Set();
+  const now = performance.now();
+  const animating = typeof dur === "number";
 
   for (const v of vehicles) {
     if (!modeMatches(v)) continue;
@@ -115,26 +147,47 @@ function renderVehicles(vehicles) {
         icon: L.divIcon({ className: "train-marker", html, iconSize: null }),
         zIndexOffset: 1000,
       }).addTo(map);
-      marker.bindPopup(() => vehiclePopup(v));
       const poly = L.polyline(
         (v.polyline || []).map((p) => [p.lat, p.lon]),
         polyStyle
       ).addTo(map);
-      entry = { marker, poly };
+      entry = {
+        marker,
+        poly,
+        v,
+        html,
+        from: [v.lat, v.lon],
+        to: [v.lat, v.lon],
+        t0: now,
+        dur: 0,
+        lastP: -1,
+        done: true,
+      };
+      marker.bindPopup(() => vehiclePopup(entry.v));
       markers.set(v.id, entry);
     } else {
-      // smooth-ish move
-      entry.marker.setLatLng([v.lat, v.lon]);
-      entry.marker.setIcon(L.divIcon({ className: "train-marker", html, iconSize: null }));
-      entry.marker.setPopupContent(vehiclePopup(v));
+      if (animating) {
+        entry.from = currentPos(entry, now);
+        entry.to = [v.lat, v.lon];
+        entry.t0 = now;
+        entry.dur = dur;
+        entry.lastP = -1;
+        entry.done = dur === 0;
+        if (dur === 0) entry.marker.setLatLng(entry.to);
+      }
+      if (entry.html !== html) {
+        entry.html = html;
+        entry.marker.setIcon(L.divIcon({ className: "train-marker", html, iconSize: null }));
+      }
+      if (entry.marker.isPopupOpen()) {
+        entry.marker.setPopupContent(vehiclePopup(v));
+      }
       if (v.polyline && v.polyline.length > 1) {
         entry.poly.setLatLngs(v.polyline.map((p) => [p.lat, p.lon]));
         entry.poly.setStyle(polyStyle);
       }
     }
-    // rebind popup data closure
-    entry.marker.off("popupopen");
-    entry.marker.on("popupopen", () => entry.marker.setPopupContent(vehiclePopup(v)));
+    entry.v = v;
   }
 
   // remove stale
@@ -155,6 +208,9 @@ function updateLineFilter(vehicles) {
   const lines = [...new Set(vehicles.filter(modeMatches).map((v) => v.line))].sort((a, b) =>
     a.localeCompare(b, "de", { numeric: true })
   );
+  const key = lines.join("\u0000");
+  if (sel.dataset.key === key) return;
+  sel.dataset.key = key;
   const current = sel.value;
   sel.innerHTML = '<option value="">alle</option>';
   for (const l of lines) {
@@ -205,8 +261,11 @@ function renderErrors(snap) {
 function handleSnapshot(snap) {
   lastSnapshot = snap;
   const vehicles = snap.vehicles || [];
+  const now = performance.now();
+  const gap = lastSnapAt ? now - lastSnapAt : 0;
+  lastSnapAt = now;
   updateLineFilter(vehicles);
-  renderVehicles(vehicles);
+  renderVehicles(vehicles, gap > 0 && gap <= 5000 ? gap : 0);
   document.getElementById("updated-at").textContent = fmtTime(snap.radar_updated_at);
 
   const ds = snap.delay_stats || {};
@@ -303,3 +362,4 @@ document.getElementById("locate-btn").addEventListener("click", locateUser);
 // --- Boot ------------------------------------------------------------------
 loadStops();
 connect();
+requestAnimationFrame(animateLoop);

@@ -37,7 +37,7 @@ GTFS_FEEDS = {
 SAARLAND_BBOX = (49.10, 6.00, 49.70, 7.60)
 
 # --- Refresh intervals (seconds) -----------------------------------------
-RADAR_INTERVAL = 10
+RADAR_INTERVAL = 1
 GTFS_RT_INTERVAL = 10
 
 # Cap polyline points per vehicle (keeps SSE snapshots small)

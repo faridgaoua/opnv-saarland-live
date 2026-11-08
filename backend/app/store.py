@@ -57,6 +57,7 @@ def _delay_stats(vehicles: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 async def radar_loop() -> None:
+    failures = 0
     while True:
         started = time.monotonic()
         try:
@@ -71,15 +72,21 @@ async def radar_loop() -> None:
             _state["delay_stats"] = _delay_stats(vehicles)
             _state["radar_updated_at"] = time.time()
             _state["radar_error"] = None
+            failures = 0
             log.info("radar: %d vehicles", len(vehicles))
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001
+            failures += 1
             _state["radar_error"] = str(e)
-            log.warning("radar failed: %s", e)
+            log.warning("radar failed (%d in a row): %s", failures, e)
         await _broadcast()
         elapsed = time.monotonic() - started
-        await asyncio.sleep(max(1.0, config.RADAR_INTERVAL - elapsed))
+        if failures:
+            sleep_s = min(15.0, float(2 ** min(failures, 4)))
+        else:
+            sleep_s = max(0.2, config.RADAR_INTERVAL - elapsed)
+        await asyncio.sleep(sleep_s)
 
 
 async def gtfs_rt_loop() -> None:
