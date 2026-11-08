@@ -88,6 +88,9 @@ function vehiclePopup(v) {
   parts.push(`<div class="line">${escapeHtml(v.line)} <span class="muted">${escapeHtml(v.name)}</span></div>`);
   if (v.destination) parts.push(`→ ${escapeHtml(v.destination)}`);
   parts.push(`Status: ${fmtDelay(v.delay_s) || '<span class="muted">unbekannt</span>'}`);
+  if (v.rt === false) {
+    parts.push(`<span class="muted">Fahrplan-Position – keine Echtzeitmeldung</span>`);
+  }
   if (v.next_stop) parts.push(`<span class="muted">nächster Halt:</span> ${escapeHtml(v.next_stop)}`);
   parts.push(`<span class="muted">Stand: ${fmtTime(v.ts || lastSnapshot?.radar_updated_at)}</span>`);
   return parts.join("<br>");
@@ -101,8 +104,10 @@ function renderVehicles(vehicles) {
     if (currentLineFilter && v.line !== currentLineFilter) continue;
     seen.add(v.id);
 
-    const color = delayColor(v.delay_s);
-    const html = `<div class="badge" style="background:${color}">${escapeHtml(v.line)}</div>`;
+    const noRt = v.rt === false;
+    const color = noRt ? "#868e96" : delayColor(v.delay_s);
+    const html = `<div class="badge${noRt ? " no-rt" : ""}" style="background:${color}">${escapeHtml(v.line)}</div>`;
+    const polyStyle = { color, weight: 3, opacity: 0.55, dashArray: noRt ? "6 4" : null };
 
     let entry = markers.get(v.id);
     if (!entry) {
@@ -113,7 +118,7 @@ function renderVehicles(vehicles) {
       marker.bindPopup(() => vehiclePopup(v));
       const poly = L.polyline(
         (v.polyline || []).map((p) => [p.lat, p.lon]),
-        { color, weight: 3, opacity: 0.55 }
+        polyStyle
       ).addTo(map);
       entry = { marker, poly };
       markers.set(v.id, entry);
@@ -124,7 +129,7 @@ function renderVehicles(vehicles) {
       entry.marker.setPopupContent(vehiclePopup(v));
       if (v.polyline && v.polyline.length > 1) {
         entry.poly.setLatLngs(v.polyline.map((p) => [p.lat, p.lon]));
-        entry.poly.setStyle({ color, weight: 3, opacity: 0.55 });
+        entry.poly.setStyle(polyStyle);
       }
     }
     // rebind popup data closure

@@ -184,6 +184,11 @@ html, body {
   vertical-align: -1px;
 }
 
+.swatch.dash {
+  border: 1.5px dashed #fff;
+  box-sizing: border-box;
+}
+
 .train-marker {
   background: transparent;
   border: none;
@@ -204,6 +209,11 @@ html, body {
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.55);
   white-space: nowrap;
   transform: translateY(-2px);
+}
+
+.train-marker .badge.no-rt {
+  border-style: dashed;
+  opacity: 0.8;
 }
 
 .leaflet-popup-content {

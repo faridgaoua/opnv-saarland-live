@@ -192,25 +192,45 @@ def parse_vehicle(jny: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
     category = (prod_ctx.get("catOutL") or prod.get("catOut") or "").strip()
     cls = prod.get("cls") or 0
 
-    # next stop + delay from stopL (scheduled dTimeS vs realtime dTimeR)
+    # next stop + delay from stopL; prefer the upcoming stop's realtime delay
     loc_l = common.get("locL") or []
+    stops = jny.get("stopL") or []
+    has_rt = any(st.get("aTimeR") or st.get("dTimeR") for st in stops)
+    lt = time.localtime()
+    now_s = lt.tm_hour * 3600 + lt.tm_min * 60 + lt.tm_sec
     next_stop = None
     delay_s = None
-    for st in jny.get("stopL") or []:
+    fallback_delay = None
+    for st in stops:
         loc = loc_l[st.get("locX", -1)] if 0 <= st.get("locX", -1) < len(loc_l) else {}
+        st_delay = None
         if st.get("aTimeR") and st.get("aTimeS"):
             r = _hhmmss_to_sec(st["aTimeR"])
             s = _hhmmss_to_sec(st["aTimeS"])
             if r is not None and s is not None:
-                delay_s = r - s
-        if st.get("dTimeR") and st.get("dTimeS") and delay_s is None:
+                st_delay = r - s
+        if st_delay is None and st.get("dTimeR") and st.get("dTimeS"):
             r = _hhmmss_to_sec(st["dTimeR"])
             s = _hhmmss_to_sec(st["dTimeS"])
             if r is not None and s is not None:
-                delay_s = r - s
-        if loc.get("name"):
+                st_delay = r - s
+        sched = _hhmmss_to_sec(st.get("aTimeS") or st.get("dTimeS"))
+        upcoming = sched is not None and sched >= now_s
+        if st_delay is not None:
+            if delay_s is None and upcoming:
+                delay_s = st_delay
+            if fallback_delay is None:
+                fallback_delay = st_delay
+        if next_stop is None and loc.get("name") and upcoming:
             next_stop = loc["name"]
-            break
+    if delay_s is None:
+        delay_s = fallback_delay
+    if next_stop is None:
+        for st in stops:
+            loc = loc_l[st.get("locX", -1)] if 0 <= st.get("locX", -1) < len(loc_l) else {}
+            if loc.get("name"):
+                next_stop = loc["name"]
+                break
 
     # polyline of the vehicle's current segment (ani.polyG.polyXL -> polyL)
     polyline: list[dict[str, float]] = []
@@ -238,6 +258,7 @@ def parse_vehicle(jny: dict[str, Any], common: dict[str, Any]) -> dict[str, Any]
         "cls": cls,
         "mode": _mode_from_cls(cls),
         "delay_s": delay_s,
+        "rt": has_rt,
         "next_stop": next_stop,
         "polyline": polyline,
     }
