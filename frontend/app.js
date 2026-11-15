@@ -4,10 +4,65 @@
 // --- Map -------------------------------------------------------------------
 const map = L.map("map", { zoomControl: true }).setView([49.24, 6.95], 10);
 
-L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+// --- Basemaps: Esri satellite (default) vs OSM streets ---------------------
+const streetLayer = L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
   maxZoom: 19,
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-}).addTo(map);
+});
+
+const satelliteLayer = L.tileLayer(
+  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  {
+    maxZoom: 19,
+    attribution:
+      '&copy; <a href="https://www.esri.com">Esri</a>, Maxar, Earthstar Geographics, HERE, Garmin, FAO, NOAA, USGS, OpenStreetMap contributors',
+  }
+);
+
+const labelLayers = [
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 19, attribution: "&copy; Esri" }
+  ),
+  L.tileLayer(
+    "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+    { maxZoom: 19, attribution: "&copy; Esri" }
+  ),
+];
+
+let satelliteOn = true;
+try {
+  satelliteOn = localStorage.getItem("saar-basemap") !== "street";
+} catch (e) {
+  /* private mode etc. — default satellite */
+}
+
+function applyBasemap() {
+  const btn = document.getElementById("basemap-btn");
+  if (satelliteOn) {
+    if (map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
+    if (!map.hasLayer(satelliteLayer)) map.addLayer(satelliteLayer);
+    for (const l of labelLayers) if (!map.hasLayer(l)) map.addLayer(l);
+    if (btn) btn.textContent = "Satellit";
+  } else {
+    if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+    for (const l of labelLayers) if (map.hasLayer(l)) map.removeLayer(l);
+    if (!map.hasLayer(streetLayer)) map.addLayer(streetLayer);
+    if (btn) btn.textContent = "Karte";
+  }
+}
+
+document.getElementById("basemap-btn").addEventListener("click", () => {
+  satelliteOn = !satelliteOn;
+  try {
+    localStorage.setItem("saar-basemap", satelliteOn ? "satellite" : "street");
+  } catch (e) {
+    /* ignore */
+  }
+  applyBasemap();
+});
+
+applyBasemap();
 
 // dark-ish overlay for HUD contrast is handled via CSS backgrounds
 
