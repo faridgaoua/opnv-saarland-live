@@ -49,7 +49,7 @@ async def _event_stream():
     q = await store.subscribe()
     try:
         # send current state immediately
-        yield f"data: {json.dumps(store.snapshot())}\n\n"
+        yield f"data: {json.dumps(store.snapshot_sse())}\n\n"
         while True:
             try:
                 snap = await asyncio.wait_for(q.get(), timeout=25.0)

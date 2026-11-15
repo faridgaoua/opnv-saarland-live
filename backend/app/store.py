@@ -14,6 +14,7 @@ _state: dict[str, Any] = {
     "vehicles": [],
     "trip_updates": [],
     "delay_stats": {},
+    "gtfs_delay_stats": {},
     "radar_updated_at": 0.0,
     "gtfs_rt_updated_at": 0.0,
     "radar_error": None,
@@ -27,6 +28,11 @@ def snapshot() -> dict[str, Any]:
     return dict(_state)
 
 
+def snapshot_sse() -> dict[str, Any]:
+    """Snapshot without trip_updates (~40 KB) — hot path, pushed at 1/s."""
+    return {k: v for k, v in _state.items() if k != "trip_updates"}
+
+
 async def subscribe() -> asyncio.Queue:
     q: asyncio.Queue = asyncio.Queue(maxsize=8)
     _listeners.add(q)
@@ -38,7 +44,7 @@ def unsubscribe(q: asyncio.Queue) -> None:
 
 
 async def _broadcast() -> None:
-    payload = snapshot()
+    payload = snapshot_sse()
     for q in list(_listeners):
         try:
             q.put_nowait(payload)
@@ -95,7 +101,7 @@ async def gtfs_rt_loop() -> None:
         try:
             updates = await gtfs_rt.fetch()
             _state["trip_updates"] = updates
-            _state["delay_stats"] = gtfs_rt.delay_stats()
+            _state["gtfs_delay_stats"] = gtfs_rt.delay_stats()
             _state["gtfs_rt_updated_at"] = time.time()
             _state["gtfs_rt_error"] = None
             log.info("gtfs-rt: %d saarland rail trip updates", len(updates))

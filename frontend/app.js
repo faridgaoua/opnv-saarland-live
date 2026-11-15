@@ -324,10 +324,13 @@ function handleSnapshot(snap) {
   document.getElementById("updated-at").textContent = fmtTime(snap.radar_updated_at);
 
   const ds = snap.delay_stats || {};
+  const gds = snap.gtfs_delay_stats || {};
   const delayed = ds.delayed_ge_2min;
+  const rail =
+    typeof gds.delayed_ge_2min === "number" ? ` · Bahn RT: ${gds.delayed_ge_2min}` : "";
   document.getElementById("delay-summary").textContent =
     typeof delayed === "number"
-      ? `${delayed} verspätet`
+      ? `${delayed} verspätet${rail}`
       : "–";
 
   renderErrors(snap);

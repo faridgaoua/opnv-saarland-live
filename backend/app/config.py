@@ -22,10 +22,10 @@ HAFAS_USER_AGENT = "saarland-live-tracker/0.1 (local dev project)"
 TRANSIT_MASK = 4 + 8 + 16 + 32 + 64 + 128 + 256 + 512  # 1020
 
 # --- GTFS-RT (gtfs.de free stream, includes SIRI Saarland) ---------------
-# Rail-only (13.7 MB / 10 s). Off by default: delay stats come from the
-# HAFAS radar, which covers buses too.
+# Rail delay cross-check only: the stream has TripUpdates + ServiceAlerts
+# but NO VehiclePosition entities. ~7.3 MB gzipped, updated every 10 s.
 GTFS_RT_URL = "https://realtime.gtfs.de/realtime-free.pb"
-ENABLE_GTFS_RT = False
+ENABLE_GTFS_RT = True
 
 # --- Static GTFS (gtfs.de, CC BY 4.0, rolling 30 days) -------------------
 GTFS_FEEDS = {

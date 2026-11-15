@@ -29,19 +29,25 @@ async def fetch() -> list[dict[str, Any]]:
         return _cache
 
     try:
-        async with httpx.AsyncClient(timeout=30) as client:
+        async with httpx.AsyncClient(
+            timeout=60, headers={"Accept-Encoding": "gzip"}
+        ) as client:
             r = await client.get(config.GTFS_RT_URL)
             r.raise_for_status()
             raw = r.content
     except Exception as e:  # noqa: BLE001
-        log.warning("GTFS-RT fetch failed: %s", e)
+        if not _cache or now - _last_fetch > 120:
+            raise
+        log.warning("GTFS-RT fetch failed (serving stale cache): %s", e)
         return _cache
 
     feed = gtfs_realtime_pb2.FeedMessage()
     try:
         feed.ParseFromString(raw)
     except Exception as e:  # noqa: BLE001
-        log.warning("GTFS-RT parse failed: %s", e)
+        if not _cache or now - _last_fetch > 120:
+            raise
+        log.warning("GTFS-RT parse failed (serving stale cache): %s", e)
         return _cache
 
     stop_ids = gtfs_static.stop_ids()
